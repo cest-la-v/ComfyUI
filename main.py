@@ -100,14 +100,14 @@ def apply_custom_paths():
     extra_model_paths_config_path = os.path.join(install_dir, "extra_model_paths.yaml")
 
     if os.path.isfile(extra_paths_config_path):
-        utils.extra_config.load_extra_path_config(extra_paths_config_path)
+        utils.extra_config.load_extra_path_config(extra_paths_config_path, allow_system_dirs=True)
         if os.path.isfile(extra_model_paths_config_path):
             logging.warning(
-                "Both extra_paths.yaml and extra_model_paths.yaml found. "
-                "extra_model_paths.yaml is deprecated; please migrate to extra_paths.yaml."
+                "Both extra_paths.yaml and extra_model_paths.yaml found; "
+                "ignoring the deprecated extra_model_paths.yaml. "
+                "Please remove or migrate its entries to extra_paths.yaml."
             )
-
-    if os.path.isfile(extra_model_paths_config_path):
+    elif os.path.isfile(extra_model_paths_config_path):
         utils.extra_config.load_extra_path_config(extra_model_paths_config_path)
 
     if args.extra_model_paths_config:

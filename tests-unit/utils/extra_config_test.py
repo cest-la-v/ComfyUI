@@ -429,12 +429,34 @@ def test_system_dir_keys(mock_yaml_load, save_restore_system_dirs, tmp_path):
     with open(yaml_path, "w") as f:
         f.write("")
 
-    load_extra_path_config(yaml_path)
+    load_extra_path_config(yaml_path, allow_system_dirs=True)
 
     assert folder_paths.get_output_directory() == os.path.normpath(str(tmp_path / "my_output"))
     assert folder_paths.get_input_directory() == os.path.normpath(str(tmp_path / "my_input"))
     assert folder_paths.get_temp_directory() == os.path.normpath(str(tmp_path / "my_temp"))
     assert folder_paths.get_user_directory() == os.path.normpath(str(tmp_path / "my_user"))
+
+
+@patch("yaml.safe_load")
+def test_system_dir_keys_not_applied_for_legacy(mock_yaml_load, save_restore_system_dirs, tmp_path):
+    """System directory keys are ignored when allow_system_dirs=False (legacy extra_model_paths.yaml)."""
+    original_output = folder_paths.get_output_directory()
+    config_data = {
+        "comfyui": {
+            "base_path": str(tmp_path),
+            "output": "my_output/",
+        }
+    }
+    mock_yaml_load.return_value = config_data
+
+    yaml_path = str(tmp_path / "extra_model_paths.yaml")
+    with open(yaml_path, "w") as f:
+        f.write("")
+
+    load_extra_path_config(yaml_path)  # allow_system_dirs defaults to False
+
+    # output should be unchanged — treated as a model category, not a system dir
+    assert folder_paths.get_output_directory() == original_output
 
 
 @patch("yaml.safe_load")

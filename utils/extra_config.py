@@ -49,7 +49,7 @@ def _implicit_scan(base: str, exclude: set[str], is_default: bool) -> None:
             folder_paths.add_model_folder_path(category, path, is_default)
 
 
-def load_extra_path_config(yaml_path: str) -> None:
+def load_extra_path_config(yaml_path: str, allow_system_dirs: bool = False) -> None:
     with open(yaml_path, 'r', encoding='utf-8') as stream:
         config = yaml.safe_load(stream)
     yaml_dir = os.path.dirname(os.path.abspath(yaml_path))
@@ -68,7 +68,7 @@ def load_extra_path_config(yaml_path: str) -> None:
         flat_model_keys: set[str] = set()
 
         for key, value in conf.items():
-            if key in _SYSTEM_DIR_KEYS:
+            if allow_system_dirs and key in _SYSTEM_DIR_KEYS:
                 # System directory override → set_*_directory()
                 path = _resolve_base(str(value).strip(), block_base, yaml_dir)
                 logging.info("Setting %s directory to %s", key, path)
