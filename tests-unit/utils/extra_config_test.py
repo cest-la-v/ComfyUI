@@ -591,3 +591,30 @@ def test_explicit_custom_nodes_key(mock_yaml_load, clear_folder_paths, tmp_path)
     assert os.path.normpath(str(tmp_path / "my_nodes")) in \
         folder_paths.folder_names_and_paths["custom_nodes"][0]
 
+
+@patch("yaml.safe_load")
+def test_nested_models_inherits_block_base(mock_yaml_load, clear_folder_paths, tmp_path):
+    """models: block without its own base_path inherits the outer block's base_path."""
+    config_data = {
+        "comfyui": {
+            "base_path": str(tmp_path),
+            "is_default": True,
+            "models": {
+                "checkpoints": "models/checkpoints/",
+            },
+        }
+    }
+    mock_yaml_load.return_value = config_data
+    folder_paths.folder_names_and_paths["checkpoints"] = ([], set())
+
+    yaml_path = str(tmp_path / "extra_paths.yaml")
+    with open(yaml_path, "w") as f:
+        f.write("")
+
+    load_extra_path_config(yaml_path)
+
+    expected = os.path.normpath(str(tmp_path / "models" / "checkpoints"))
+    paths = folder_paths.folder_names_and_paths["checkpoints"][0]
+    assert expected in paths
+    # is_default inherited: path should be at index 0
+    assert paths[0] == expected
