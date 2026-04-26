@@ -37,6 +37,10 @@ from comfy_execution.graph import (
 from comfy_execution.graph_utils import GraphBuilder, is_link
 from comfy_execution.validation import validate_node_input
 from comfy_execution.progress import get_progress_state, reset_progress_state, add_progress_handler, WebUIProgressHandler
+from comfy_execution.generation_context import (
+    reset_generation_context, get_generation_registry,
+    compute_node_context,
+)
 from comfy_execution.utils import CurrentNodeContext
 from comfy_api.internal import _ComfyNodeInternal, _NodeOutputInternal, first_real_override, is_class, make_locked_method_func
 from comfy_api.latest import io, _io
@@ -197,6 +201,8 @@ def get_input_data(inputs, class_def, unique_id, execution_list=None, dynprompt=
                 hidden_inputs_v3[io.Hidden.auth_token_comfy_org] = extra_data.get("auth_token_comfy_org", None)
             if io.Hidden.api_key_comfy_org.name in hidden:
                 hidden_inputs_v3[io.Hidden.api_key_comfy_org] = extra_data.get("api_key_comfy_org", None)
+            if io.Hidden.generation_metadata.name in hidden:
+                hidden_inputs_v3[io.Hidden.generation_metadata] = extra_data.get('generation_metadata', None)
     else:
         if "hidden" in valid_inputs:
             h = valid_inputs["hidden"]
@@ -213,6 +219,8 @@ def get_input_data(inputs, class_def, unique_id, execution_list=None, dynprompt=
                     input_data_all[x] = [extra_data.get("auth_token_comfy_org", None)]
                 if h[x] == "API_KEY_COMFY_ORG":
                     input_data_all[x] = [extra_data.get("api_key_comfy_org", None)]
+                if h[x] == "GENERATION_METADATA":
+                    input_data_all[x] = [extra_data.get('generation_metadata', None)]
     v3_data["hidden_inputs"] = hidden_inputs_v3
     return input_data_all, missing_keys, v3_data
 
@@ -434,6 +442,14 @@ async def execute(server, dynprompt, caches, current_item, extra_data, executed,
     inputs = dynprompt.get_node(unique_id)['inputs']
     class_type = dynprompt.get_node(unique_id)['class_type']
     class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
+
+    # Compute generation context from raw inputs + upstream contexts (before cache check,
+    # so even cached nodes propagate context to their downstream consumers).
+    _gen_registry = get_generation_registry()
+    _gen_ctx = compute_node_context(unique_id, inputs, _gen_registry)
+    _gen_registry.set_context(unique_id, _gen_ctx)
+    extra_data['generation_metadata'] = _gen_ctx
+
     cached = await caches.outputs.get(unique_id)
     if cached is not None:
         _send_cached_ui(server, unique_id, display_node_id, cached, prompt_id, ui_outputs)
@@ -735,6 +751,7 @@ class PromptExecutor:
                 dynamic_prompt = DynamicPrompt(prompt)
                 reset_progress_state(prompt_id, dynamic_prompt)
                 add_progress_handler(WebUIProgressHandler(self.server))
+                reset_generation_context()
                 is_changed_cache = IsChangedCache(prompt_id, dynamic_prompt, self.caches.outputs)
                 for cache in self.caches.all:
                     await cache.set_prompt(dynamic_prompt, prompt.keys(), is_changed_cache)
