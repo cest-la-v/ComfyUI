@@ -81,10 +81,10 @@ def load_extra_path_config(yaml_path: str, allow_system_dirs: bool = False) -> N
                 # New nested style: models: { base_path, is_default, <categories> }
                 has_models_block = True
                 models_conf = dict(value)
-                models_base = None
+                models_base = block_base
                 if "base_path" in models_conf:
                     models_base = _resolve_base(models_conf.pop("base_path"), block_base, yaml_dir)
-                models_is_default = bool(models_conf.pop("is_default", False))
+                models_is_default = bool(models_conf.pop("is_default", block_is_default))
                 explicit: set[str] = set(models_conf.keys())
                 for cat, raw in models_conf.items():
                     _add_model_paths(cat, raw, models_base, yaml_dir, models_is_default)
