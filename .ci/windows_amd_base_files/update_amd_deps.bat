@@ -1,7 +1,7 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal enableextensions
 
-:: ── Defaults ─────────────────────────────────────────────────────────────────
+rem Defaults
 if not defined PORTABLE_ROOT set "PORTABLE_ROOT=%CD%"
 if not defined COMFYUI_ROOT  if exist "%PORTABLE_ROOT%\ComfyUI\main.py" set "COMFYUI_ROOT=%PORTABLE_ROOT%\ComfyUI"
 if not defined PYTHON (
@@ -30,8 +30,8 @@ pause
 echo.
 echo [1/2] Fetching ROCm package URLs...
 set "ROCM_URLS="
-for /f "delims=" %%u in ('cmd /c ""%PYTHON%" -s "%FETCH_URLS%""') do set "ROCM_URLS=!ROCM_URLS! %%u"
-if "!ROCM_URLS!"=="" (
+for /f "delims=" %%u in ('cmd /c ""%PYTHON%" -s "%FETCH_URLS%""') do call set "ROCM_URLS=%%ROCM_URLS%% %%u"
+if not defined ROCM_URLS (
     echo Failed to resolve ROCm URLs.
     pause
     exit /b 1
@@ -39,7 +39,7 @@ if "!ROCM_URLS!"=="" (
 
 echo.
 echo [2/2] Installing ROCm packages + requirements in one pass...
-"%PYTHON%" -s -m pip install --upgrade !ROCM_URLS! -r "%COMFYUI_ROOT%\requirements.txt"
+"%PYTHON%" -s -m pip install --upgrade %ROCM_URLS% -r "%COMFYUI_ROOT%\requirements.txt"
 if errorlevel 1 (
     echo pip install failed. See output above.
     pause
